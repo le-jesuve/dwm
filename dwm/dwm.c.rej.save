@@ -1,0 +1,56 @@
+--- config.def.h
++++ config.def.h
+@@ -68,6 +68,9 @@ static Key keys[] = {
+ 	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+ 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+ 	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
++	{ MODKEY|ShiftMask,             XK_h,      setcfact,       {.f = +0.25} },
++	{ MODKEY|ShiftMask,             XK_l,      setcfact,      {.f = -0.25} },
++	{ MODKEY|ShiftMask,             XK_o,      setcfact,       {.f =  0.00} },
+ 	{ MODKEY,                       XK_Return, zoom,           {0} },
+ 	{ MODKEY,                       XK_Tab,    view,           {0} },
+ 	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+--- dwm.c
++++ dwm.c
+@@ -1531,6 +1534,23 @@ setlayout(const Arg *arg)
+ 		drawbar(selmon);
+ }
+ 
++void setcfact(const Arg *arg) {
++	float f;
++	Client *c;
++
++	c = selmon->sel;
++
++	if(!arg || !c || !selmon->lt[selmon->sellt]->alrrange)
++		return;
++	f = arg->f + c->cfact;
++	if(arg->f == 0.0)
++		f = 1.0;
++	else if(f < 0.25 || f > 4.0)
++		return;
++	c->cfact = f;
++	arrange(selmon);
++}
++
+ /* arg > 1.0 will set mfact absolutly */
+ void
+ setmfact(const Arg *arg)
+@@ -1688,13 +1714,15 @@ tile(Monitor *m)
+ 		mw = m->ww;
+ 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
+ 		if (i < m->nmaster) {
+-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
++			h = (m->wh - my) * (c->cfact / mfacts);
+ 			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+ 			my += HEIGHT(c);
++			mfacts -= c->cfact;
+ 		} else {
+-			h = (m->wh - ty) / (n - i);
++			h = (m->wh - ty) * (c->cfact / sfacts);
+ 			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+ 			ty += HEIGHT(c);
++			sfacts -= c->cfact;
+ 		}
+ }
+ 
