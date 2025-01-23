@@ -1,0 +1,9 @@
+systemctl start bluetooth &
+bluetoothctl power on &
+feh --bg-fil Pictures/apple.jpg &
+#feh --randomize --bg-scale Pictures/* &
+#walp &
+picom &
+xsetroot -name "TS-Carter" &
+#exec startplasma-x11
+exec dwm
