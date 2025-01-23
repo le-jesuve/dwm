@@ -1,5 +1,4 @@
 # Suckless
-
-All of my software compiled in one area, easy to find :)
+my dotfiles
 
 ![Setup](SucklessSetup.png)
