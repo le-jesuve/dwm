@@ -9,9 +9,9 @@ static const int topbar = 1;            /* 0 means bottom bar */
 static const int splitstatus = 1;       /* 1 for split status items */
 static const char *splitdelim = ";"; /* Character used for separating status */
 static const char *fonts[] = {
-    "FiraCode Nerd Font Mono Light:size=12:style=Light"};
+    "FiraCode Nerd Font Mono Light:size=10:style=Light"};
 static const char dmenufont[] =
-    "FiraCode Nerd Font Mono Light:size=12:style=Light";
+    "FiraCode Nerd Font Mono Light:size=10:style=Light";
 static const char col_gray3[] = "#962a2a";
 static const char col_gray1[] = "#000000";
 static const char col_gray2[] = "#a8856c";
@@ -88,6 +88,7 @@ static const char *dmenucmd[] = {
     "dmenu_run", "-m",      dmenumon, "-fn",    dmenufont, "-nb",     col_gray1,
     "-nf",       col_gray3, "-sb",    col_cyan, "-sf",     col_gray4, NULL};
 static const char *termcmd[] = {"st", NULL};
+static const char *stcdcmd[] = {"stcd", NULL};
 static const char *prtscrcmd[] = {"flameshot", "gui", NULL};
 static const char *firefoxcmd[] = {"firefox", NULL};
 
@@ -97,6 +98,7 @@ static Key keys[] = {
     {MODKEY, XK_p, spawn, {.v = dmenucmd}},
     {MODKEY | ShiftMask, XK_f, spawn, {.v = firefoxcmd}},
     {MODKEY | ShiftMask, XK_Return, spawn, {.v = termcmd}},
+    {MODKEY | ShiftMask, XK_v, spawn, {.v = stcdcmd}},
     {MODKEY, XK_b, togglebar, {0}},
     {MODKEY, XK_j, focusstack, {.i = +1}},
     {MODKEY, XK_k, focusstack, {.i = -1}},
