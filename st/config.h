@@ -5,8 +5,8 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "FiraCode Nerd Font Mono Light:style=Light:size=9";
-static char *font2[] = {"FiraCode Nerd Font Mono Light:style=Light:size=9"};
+static char *font = "FiraCode Nerd Font Mono Light:style=Light:size=12";
+static char *font2[] = {"FiraCode Nerd Font Mono Light:style=Light:size=12"};
 static int borderpx = 2;
 
 /*
@@ -382,7 +382,6 @@ static uint ignoremod = Mod2Mask | XK_SWITCH_MOD;
  */
 static Key key[] = {
     /* keysym           mask            string      appkey appcursor */
-    {XK_Caps_Lock, XK_ANY_MOD, "\033[5~", 0, 0},
     {XK_KP_Home, ShiftMask, "\033[2J", 0, -1},
     {XK_KP_Home, ShiftMask, "\033[1;2H", 0, +1},
     {XK_KP_Home, XK_ANY_MOD, "\033[H", 0, -1},

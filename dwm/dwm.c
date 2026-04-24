@@ -58,6 +58,7 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw + gappx)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define STATUSBAR "dwmblocks"
 
 #define OPAQUE 0xffU
 
@@ -203,6 +204,7 @@ static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
+static pid_t getstatusbarpid(void);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
@@ -237,6 +239,7 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
+static void sigstatusbar(const Arg *arg);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
@@ -272,6 +275,9 @@ static void zoom(const Arg *arg);
 /* variables */
 static const char broken[] = "broken";
 static char stext[256];
+static int statusw;
+static int statussig;
+static pid_t statuspid = -1;
 static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
 static int bh, blw = 0; /* bar geometry */
@@ -475,6 +481,7 @@ void buttonpress(XEvent *e) {
   Client *c;
   Monitor *m;
   XButtonPressedEvent *ev = &e->xbutton;
+	char *text, *s, ch;
 
   click = ClkRootWin;
   /* focus monitor if necessary */
@@ -493,9 +500,27 @@ void buttonpress(XEvent *e) {
       arg.ui = 1 << i;
     } else if (ev->x < x + blw)
       click = ClkLtSymbol;
-    else if (ev->x > selmon->ww - (int)TEXTW(stext))
+		else if (ev->x > selmon->ww - statusw) {
+			x = selmon->ww - statusw;
       click = ClkStatusText;
-    else
+			statussig = 0;
+			for (text = s = stext; *s && x <= ev->x; s++) {
+				if ((unsigned char)(*s) < ' ') {
+					ch = *s;
+					*s = '\0';
+					x += TEXTW(text) - lrpad;
+					*s = ch;
+					text = s + 1;
+					if (x >= ev->x)
+						break;
+					/* End clickable section on a matching signal raw byte */
+					if (statussig == ch)
+						statussig = 0;
+					else
+						statussig = ch;
+				}
+			}
+		} else
       click = ClkWinTitle;
   } else if ((c = wintoclient(ev->window))) {
     focus(c);
@@ -783,6 +808,7 @@ void drawbar(Monitor *m) {
   drw_rect(drw, x, 0, m->ww - x, bh, 1, 1);
 
   if (m == selmon || 1) { /* status is only drawn on selected monitor */
+		char *text, *s, ch;
     rstext = strdup(stext);
     if (splitstatus) {
       mstext = strsep(&rstext, splitdelim);
@@ -790,8 +816,20 @@ void drawbar(Monitor *m) {
             2; /* x position of middle status text */
       drw_text(drw, msx, 0, TEXTW(mstext) - lrpad, bh, 0, mstext, 0);
     }
-    tw = TEXTW(rstext) - lrpad + 2; /* 2px right padding */
-    drw_text(drw, m->ww - tw, 0, tw, bh, 0, rstext, 0);
+		x = 0;
+for (text = s = rstext ? rstext : stext; *s; s++) {		
+      if ((unsigned char)(*s) < ' ') {
+				ch = *s;
+				*s = '\0';
+				tw = TEXTW(text) - lrpad;
+				drw_text(drw, m->ww - statusw + x, 0, tw, bh, 0, text, 0);
+				x += tw;
+				*s = ch;
+				text = s + 1;
+      }
+    }
+    tw = TEXTW(text) - lrpad;
+drw_text(drw, m->ww - statusw + x, 0, tw, bh, 0, text, 0);
   }
 
   drw_map(drw, m->barwin, 0, 0, m->ww, bh);
@@ -915,6 +953,31 @@ Atom getatomprop(Client *c, Atom prop) {
   }
   return atom;
 }
+
+pid_t
+getstatusbarpid(void)
+{
+	char buf[32], *str = buf, *c;
+	FILE *fp;
+
+	if (statuspid > 0) {
+		snprintf(buf, sizeof(buf), "/proc/%u/cmdline", statuspid);
+		if ((fp = fopen(buf, "r"))) {
+			fgets(buf, sizeof(buf), fp);
+			while ((c = strchr(str, '/')))
+				str = c + 1;
+			fclose(fp);
+			if (!strcmp(str, STATUSBAR))
+				return statuspid;
+		}
+	}
+	if (!(fp = popen("pidof -s "STATUSBAR, "r")))
+		return -1;
+	fgets(buf, sizeof(buf), fp);
+	pclose(fp);
+	return strtol(buf, NULL, 10);
+}
+
 
 int getrootptr(int *x, int *y) {
   int di;
@@ -1682,6 +1745,21 @@ void showhide(Client *c) {
   }
 }
 
+void
+sigstatusbar(const Arg *arg)
+{
+	union sigval sv;
+
+	if (!statussig)
+		return;
+	sv.sival_int = arg->i;
+	if ((statuspid = getstatusbarpid()) <= 0)
+		return;
+
+	sigqueue(statuspid, SIGRTMIN+statussig, sv);
+}
+
+
 void sigchld(int unused) {
   if (signal(SIGCHLD, sigchld) == SIG_ERR)
     die("can't install SIGCHLD handler:");
@@ -2052,8 +2130,29 @@ void updatesizehints(Client *c) {
 
 void updatestatus(void) {
   Monitor *m;
-  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
+	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext))) {
     strcpy(stext, "dwm-" VERSION);
+		statusw = TEXTW(stext) - lrpad + 2;
+	} else {
+char *text, *s, ch;
+char *stextcopy = strdup(stext);
+char *rpart = stextcopy;
+if (splitstatus)
+    strsep(&rpart, splitdelim);
+statusw = 0;
+for (text = s = rpart ? rpart : stextcopy; *s; s++) {
+    if ((unsigned char)(*s) < ' ') {
+        ch = *s;
+        *s = '\0';
+        statusw += TEXTW(text) - lrpad;
+        *s = ch;
+        text = s + 1;
+    }
+}
+statusw += TEXTW(text) - lrpad + 2;
+free(stextcopy);
+
+	}
   for (m = mons; m; m = m->next)
     drawbar(m);
 }

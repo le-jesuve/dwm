@@ -18,7 +18,7 @@ static const char col_gray2[] = "#a8856c";
 static const char col_gray4[] = "#000000";
 static const char col_cyan[] = "#63576E";
 
-static const unsigned int baralpha = 200;
+static const unsigned int baralpha = 250;
 static const unsigned int borderalpha = 140;
 
 static const char *colors[][3] = {
@@ -68,7 +68,7 @@ static const Layout layouts[] = {
 };
 
 /* key definitions */
-#define MODKEY Mod1Mask
+#define MODKEY Mod4Mask
 #define TAGKEYS(KEY, TAG)                                                      \
   {MODKEY, KEY, view, {.ui = 1 << TAG}},                                       \
       {MODKEY | ControlMask, KEY, toggleview, {.ui = 1 << TAG}},               \
@@ -88,11 +88,17 @@ static const char *dmenucmd[] = {
     "dmenu_run", "-m",      dmenumon, "-fn",    dmenufont, "-nb",     col_gray1,
     "-nf",       col_gray3, "-sb",    col_cyan, "-sf",     col_gray4, NULL};
 static const char *termcmd[] = {"st", NULL};
+static const char *brightnessdowncmd[] = {"brightnessctl", "s", "3333-", NULL};
+static const char *brightnessupcmd[] = {"brightnessctl", "s", "+3333", NULL};
+static const char *audioraisecmd[] = {"pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%", NULL};
+static const char *audiolowercmd[] = {"pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%", NULL};
+static const char *audiomutecmd[] = {"pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle", NULL};
 static const char *stcdcmd[] = {"stcd", NULL};
 static const char *prtscrcmd[] = {"flameshot", "gui", NULL};
 static const char *firefoxcmd[] = {"firefox", NULL};
 
 #include "movestack.c"
+#include <X11/XF86keysym.h>
 static Key keys[] = {
     /* modifier                     key        function        argument */
     {MODKEY, XK_p, spawn, {.v = dmenucmd}},
@@ -128,6 +134,11 @@ static Key keys[] = {
         TAGKEYS(XK_5, 4) TAGKEYS(XK_6, 5) TAGKEYS(XK_7, 6) TAGKEYS(XK_8, 7)
             TAGKEYS(XK_9, 8){MODKEY | ShiftMask, XK_q, quit, {0}},
     {0, XK_Print, spawn, {.v = prtscrcmd}},
+    {0, XF86XK_MonBrightnessUp, spawn, {.v = brightnessupcmd}},
+    {0, XF86XK_MonBrightnessDown, spawn, {.v = brightnessdowncmd}},
+    {0, XF86XK_AudioRaiseVolume, spawn, {.v = audioraisecmd}},
+    {0, XF86XK_AudioLowerVolume, spawn, {.v = audiolowercmd}},
+    {0, XF86XK_AudioMute, spawn, {.v = audiomutecmd}},
 };
 
 /* button definitions */
